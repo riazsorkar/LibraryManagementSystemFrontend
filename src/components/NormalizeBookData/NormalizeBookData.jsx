@@ -9,13 +9,13 @@ export default function normalizeBookData(b) {
     rating: b.averageRating || 0, // Default to 0
     ratingCount: b.totalRatings || 0, // Default to 0
     category: b.categoryName || "General",
-    pdfLink: b.softCopyAvailable === "1" ? "#" : null,
+    pdfLink: b.softCopyAvailable ,
     status: b.availableCopies >= 2 ? "Available" : "Not Available",
     summary: b.summary || "",
     summaryTail: null,
     availableCopies: b.availableCopies || 0,
     totalCopies: b.totalCopies || 0,
-    audioSrc: b.audioFileAvailable === "1" ? "#" : null,
+    audioSrc: b.audioFileAvailable,
     hardCopyAvailable: b.hardCopyAvailable || false
   };
 }

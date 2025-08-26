@@ -84,7 +84,7 @@ export default function Sidebar({ onSelect }) {
   return (
     <aside className="hidden md:block w-64 bg-white p-4 border-r border-gray-200 sticky top-28 overflow-y-hidden space-y-6">
       <div>
-        <h3 className="text-base font-semibold mb-2">Book Categories</h3>
+        <h3 className="text-base font-semibold mb-2 text-gray-900">Book Categories</h3>
 
         <div className={`overflow-y-auto ${CAT_MAX_H} pr-1`}>
           <ul className="space-y-1 mb-2">

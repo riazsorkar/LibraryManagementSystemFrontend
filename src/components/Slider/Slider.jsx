@@ -23,13 +23,13 @@ export default function Slider({ title, items }) {
         <div className="hidden sm:flex gap-2">
           <button
             onClick={() => scrollByAmount(-1)}
-            className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+            className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-900"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => scrollByAmount(1)}
-            className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50"
+            className="p-2 rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-900"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

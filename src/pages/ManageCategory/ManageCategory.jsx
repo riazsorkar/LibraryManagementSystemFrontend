@@ -5,6 +5,8 @@ import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import AdminDashboardSidebar from "../../components/AdminDashboardSidebar/AdminDashboardSidebar";
 import api from "../../api";
@@ -34,6 +36,36 @@ export default function ManageCategory() {
     };
     loadCategories();
   }, []);
+
+  // --------- Pagination state ----------
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Number of items per page
+
+  // Calculate pagination values
+  const totalItems = categories.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = categories.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   // Modal state (Add / Edit)
   const [open, setOpen] = useState(false);
@@ -163,6 +195,56 @@ export default function ManageCategory() {
     }
   };
 
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total pages is less than max visible
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate start and end of visible page range
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if we're near the beginning
+      if (currentPage <= 3) {
+        endPage = 4;
+      }
+      
+      // Adjust if we're near the end
+      if (currentPage >= totalPages - 2) {
+        startPage = totalPages - 3;
+      }
+      
+      // Add ellipsis if needed after first page
+      if (startPage > 2) {
+        pages.push('...');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+      
+      // Add ellipsis if needed before last page
+      if (endPage < totalPages - 1) {
+        pages.push('...');
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
@@ -191,7 +273,7 @@ export default function ManageCategory() {
               <div className="w-full overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left border-b">
+                    <tr className="text-gray-900 text-left border-b">
                       <th className="py-3 px-4 min-w-[80px]">#</th>
                       <th className="py-3 px-4 min-w-[220px]">Category Name</th>
                       <th className="py-3 px-4 min-w-[300px]">Description</th>
@@ -199,9 +281,9 @@ export default function ManageCategory() {
                     </tr>
                   </thead>
                   <tbody>
-                    {categories.map((category, idx) => (
+                    {currentItems.map((category, idx) => (
                       <tr key={category.categoryId} className="border-b last:border-0 even:bg-gray-50">
-                        <td className="py-3 px-4 text-gray-700">{idx + 1}</td>
+                        <td className="py-3 px-4 text-gray-700">{startIndex + idx + 1}</td>
                         <td className="py-3 px-4 text-gray-800 font-medium">{category.name}</td>
                         <td className="py-3 px-4 text-gray-600">{category.description || "—"}</td>
                         <td className="py-3 px-4">
@@ -231,6 +313,47 @@ export default function ManageCategory() {
               {categories.length === 0 && !loading && (
                 <div className="p-8 text-center text-gray-500">
                   No categories found. Click "Add Category" to create one.
+                </div>
+              )}
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t">
+                  <div className="text-sm text-gray-700">
+                    Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} categories
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={goToPrevPage}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    
+                    {getPageNumbers().map((page, index) => (
+                      <button
+                        key={index}
+                        onClick={() => typeof page === 'number' ? goToPage(page) : null}
+                        disabled={page === '...'}
+                        className={`min-w-[2.25rem] px-2 py-1.5 rounded-md border text-sm ${
+                          page === currentPage
+                            ? 'border-sky-600 bg-sky-600 text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        } ${page === '...' ? 'cursor-default' : ''}`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -274,7 +397,7 @@ export default function ManageCategory() {
                     value={form.name}
                     onChange={handleChange}
                     placeholder="Type category name"
-                    className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                     required
                   />
                 </div>
@@ -288,7 +411,7 @@ export default function ManageCategory() {
                     onChange={handleChange}
                     placeholder="Type category description (optional)"
                     rows={3}
-                    className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                   />
                 </div>
               </div>

@@ -4,6 +4,8 @@ import {
   CheckCircle2,
   XCircle,
   Mail,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import api from "../../api";
@@ -17,6 +19,8 @@ export default function Dashboard() {
   const [borrowedBooks, setBorrowedBooks] = useState([]);
   const [currentPagePending, setCurrentPagePending] = useState(1);
   const [currentPageBorrowed, setCurrentPageBorrowed] = useState(1);
+  const [totalPagesPending, setTotalPagesPending] = useState(1);
+  const [totalPagesBorrowed, setTotalPagesBorrowed] = useState(1);
   const [pageSize] = useState(10);
   
   useEffect(() => {
@@ -43,6 +47,7 @@ export default function Dashboard() {
       try {
         const response = await api.get(`/admin/borrows/pending?page=${currentPagePending}&pageSize=${pageSize}`);
         setPendingBorrows(response.data.pendingBorrows || []);
+        setTotalPagesPending(response.data.totalPages || 1);
       } catch (error) {
         console.error("Error fetching pending borrows:", error);
       }
@@ -57,6 +62,7 @@ export default function Dashboard() {
       try {
         const response = await api.get(`/admin/borrows/Borrowed?page=${currentPageBorrowed}&pageSize=${pageSize}`);
         setBorrowedBooks(response.data.borrowedBorrows || []);
+        setTotalPagesBorrowed(response.data.totalPages || 1);
       } catch (error) {
         console.error("Error fetching borrowed books:", error);
       }
@@ -122,6 +128,57 @@ export default function Dashboard() {
     return date.toLocaleDateString();
   };
 
+  // Pagination component
+  const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    
+    return (
+      <div className="flex items-center justify-center mt-4 space-x-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="p-1 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        
+        {pages.map(page => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`w-8 h-8 rounded-md text-sm ${
+              currentPage === page 
+                ? 'bg-blue-600 text-white' 
+                : 'border border-gray-300 hover:bg-gray-100'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+        
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="p-1 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    );
+  };
+
   // -------------------- WEEKLY LINE CHART --------------------
   const WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -130,7 +187,7 @@ export default function Dashboard() {
     () => [
       { name: "Borrowed", color: "stroke-sky-500", dot: "fill-sky-500", values: [20, 55, 62, 28, 24, 68, 64] },
       { name: "Returned", color: "stroke-amber-500", dot: "fill-amber-400", values: [48, 40, 30, 18, 22, 42, 58] },
-      { name: "Overdue", color: "stroke-rose-500", dot: "fill-rose-500", values: [10, 30, 55, 58, 26, 40, 88] },
+      { name: "Overdue", color: "stroke-red-500", dot: "fill-red-500", values: [10, 30, 55, 58, 26, 40, 88] },
     ],
     []
   );
@@ -205,15 +262,15 @@ export default function Dashboard() {
             { label: "Pending Donation Requests", value: statistics.pendingDonationRequests },
           ].map((item, i) => (
             <div key={i} className="bg-white rounded shadow p-4 text-center">
-              <p className="text-sm text-gray-500">{item.label}</p>
-              <p className="text-xl font-bold text-gray-800">{item.value}</p>
+              <p className="text-sm text-gray-700 font-medium">{item.label}</p>
+              <p className="text-xl font-bold text-gray-900 mt-1">{item.value}</p>
             </div>
           )) : (
             // Loading state for statistics
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-white rounded shadow p-4 text-center">
-                <p className="text-sm text-gray-500">Loading...</p>
-                <p className="text-xl font-bold text-gray-800">—</p>
+                <p className="text-sm text-gray-700 font-medium">Loading...</p>
+                <p className="text-xl font-bold text-gray-900 mt-1">—</p>
               </div>
             ))
           )}
@@ -224,8 +281,8 @@ export default function Dashboard() {
           {/* ---------------------- CHECK-OUT STATISTICS (Weekly Line Chart; legend BELOW) ---------------------- */}
           <div className="bg-white rounded shadow p-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold mb-2">Check-Out Statistics</h3>
-              <span className="text-xs text-gray-500">Updated {hh}:{mm}:{ss}</span>
+              <h3 className="font-semibold mb-2 text-gray-900">Check-Out Statistics</h3>
+              <span className="text-xs text-gray-600">Updated {hh}:{mm}:{ss}</span>
             </div>
 
             {/* Chart centered */}
@@ -270,8 +327,8 @@ export default function Dashboard() {
                     x={sx(i)}
                     y={chartBox.h - 6}
                     textAnchor="middle"
-                    className="fill-gray-400"
-                    style={{ fontSize: 10 }}
+                    className="fill-gray-600"
+                    style={{ fontSize: 10, fontWeight: 500 }}
                   >
                     {w}
                   </text>
@@ -314,10 +371,10 @@ export default function Dashboard() {
                     )}`}
                   />
                   <div>
-                    <p className="font-semibold text-gray-800">{s.name}</p>
-                    <p className="text-[11px] leading-4 text-gray-400">Mon – Sun</p>
-                    <p className="text-[11px] leading-4 text-gray-400">7 pts</p>
-                    <p className="text-[11px] leading-4 text-gray-400">Updated weekly</p>
+                    <p className="font-semibold text-gray-900">{s.name}</p>
+                    <p className="text-xs leading-4 text-gray-600 font-medium">Mon – Sun</p>
+                    <p className="text-xs leading-4 text-gray-600 font-medium">7 pts</p>
+                    <p className="text-xs leading-4 text-gray-600 font-medium">Updated weekly</p>
                   </div>
                 </div>
               ))}
@@ -326,66 +383,75 @@ export default function Dashboard() {
 
           {/* ---------------------- Currently Borrowed Books ---------------------- */}
           <div className="bg-white rounded shadow p-4">
-            <h3 className="font-semibold mb-2">Currently Borrowed Books</h3>
+            <h3 className="font-semibold mb-2 text-gray-900">Currently Borrowed Books</h3>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-gray-200">
-                  <th>#</th>
-                  <th>Book Title</th>
-                  <th>User Name</th>
-                  <th>Borrow Date</th>
-                  <th>Due Date</th>
+                  <th className="text-gray-700 font-semibold pb-2">#</th>
+                  <th className="text-gray-700 font-semibold pb-2">Book Title</th>
+                  <th className="text-gray-700 font-semibold pb-2">User Name</th>
+                  <th className="text-gray-700 font-semibold pb-2">Borrow Date</th>
+                  <th className="text-gray-700 font-semibold pb-2">Due Date</th>
                 </tr>
               </thead>
               <tbody>
                 {borrowedBooks.map((book, i) => (
                   <tr key={book.borrowId} className="border-b border-gray-200">
-                    <td>{i + 1}</td>
-                    <td className="py-3 px-4 font-medium">{book.bookTitle}</td>
-                    <td>{book.userName}</td>
-                    <td>{formatDate(book.borrowDate)}</td>
-                    <td>{formatDate(book.dueDate)}</td>
+                    <td className="py-3 text-gray-800">{(currentPageBorrowed - 1) * pageSize + i + 1}</td>
+                    <td className="py-3 px-4 font-medium text-gray-900">{book.bookTitle}</td>
+                    <td className="text-gray-800">{book.userName}</td>
+                    <td className="text-gray-800">{formatDate(book.borrowDate)}</td>
+                    <td className="text-gray-800">{formatDate(book.dueDate)}</td>
                   </tr>
                 ))}
                 {borrowedBooks.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-gray-500">
+                    <td colSpan={5} className="py-6 text-center text-gray-600">
                       No borrowed books.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            
+            {/* Pagination for Borrowed Books */}
+            {totalPagesBorrowed > 1 && (
+              <Pagination
+                currentPage={currentPageBorrowed}
+                totalPages={totalPagesBorrowed}
+                onPageChange={setCurrentPageBorrowed}
+              />
+            )}
           </div>
         </div>
 
         {/* Pending Borrow Requests */}
         <div className="bg-white rounded shadow p-4">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold">Pending Borrow Requests</h3>
-            <Link to="#" className="text-xs text-green-600 hover:underline">
+            <h3 className="font-semibold text-gray-900">Pending Borrow Requests</h3>
+            <Link to="#" className="text-xs text-green-700 hover:underline font-medium">
               View All
             </Link>
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left border-b border-gray-200">
-                <th>#</th>
-                <th>Book Title</th>
-                <th>User Name</th>
-                <th>Borrow Date</th>
-                <th>Due Date</th>
-                <th className="text-center">Action</th>
+                <th className="text-gray-700 font-semibold pb-2">#</th>
+                <th className="text-gray-700 font-semibold pb-2">Book Title</th>
+                <th className="text-gray-700 font-semibold pb-2">User Name</th>
+                <th className="text-gray-700 font-semibold pb-2">Borrow Date</th>
+                <th className="text-gray-700 font-semibold pb-2">Due Date</th>
+                <th className="text-center text-gray-700 font-semibold pb-2">Action</th>
               </tr>
             </thead>
             <tbody>
               {pendingBorrows.map((request, i) => (
                 <tr key={request.borrowId} className="border-b border-gray-200">
-                  <td>{i + 1}</td>
-                  <td className="py-3 px-4 font-medium">{request.bookTitle}</td>
-                  <td>{request.userName}</td>
-                  <td>{formatDate(request.borrowDate)}</td>
-                  <td>{formatDate(request.dueDate)}</td>
+                  <td className="py-3 text-gray-800">{(currentPagePending - 1) * pageSize + i + 1}</td>
+                  <td className="py-3 px-4 font-medium text-gray-900">{request.bookTitle}</td>
+                  <td className="text-gray-800">{request.userName}</td>
+                  <td className="text-gray-800">{formatDate(request.borrowDate)}</td>
+                  <td className="text-gray-800">{formatDate(request.dueDate)}</td>
                   <td className="text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -409,13 +475,22 @@ export default function Dashboard() {
 
               {pendingBorrows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-500">
+                  <td colSpan={6} className="py-6 text-center text-gray-600">
                     No pending borrow requests.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          
+          {/* Pagination for Pending Borrow Requests */}
+          {totalPagesPending > 1 && (
+            <Pagination
+              currentPage={currentPagePending}
+              totalPages={totalPagesPending}
+              onPageChange={setCurrentPagePending}
+            />
+          )}
         </div>
       </main>
 
@@ -444,13 +519,13 @@ export default function Dashboard() {
                     )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800">
+                    <h3 className="text-lg font-semibold text-gray-900">
                       {confirm.type === "approve"
                         ? "Approve this borrow request?"
                         : "Reject this borrow request?"}
                     </h3>
                     {confirm.borrow && (
-                      <p className="mt-1 text-sm text-gray-600">
+                      <p className="mt-1 text-sm text-gray-700">
                         <span className="font-medium">
                           {confirm.borrow.bookTitle}
                         </span>{" "}
@@ -500,7 +575,7 @@ export default function Dashboard() {
               <p className="text-sm font-semibold text-gray-900">
                 {toast.type === "accept" ? "Approved" : "Rejected"}
               </p>
-              <p className="text-xs text-gray-600">{toast.message}</p>
+              <p className="text-xs text-gray-700">{toast.message}</p>
             </div>
           </div>
         </div>

@@ -11,11 +11,13 @@ import {
   CheckCircle2,
   Upload,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import api from "../../api";
 import AdminDashboardSidebar from "../../components/AdminDashboardSidebar/AdminDashboardSidebar";
 
-const PLACEHOLDER_IMG = "https://dummyimage.com/80x80/e5e7eb/9ca3af&text=📘";
+const PLACEHOLDER_IMG = "../../../uploads/images/dummy_cover.png";
 
 // ---------- helpers ----------
 function toYMD(dateStr) {
@@ -73,6 +75,36 @@ export default function ManageBooks() {
   useEffect(() => {
     fetchBooks();
   }, []);
+
+  // --------- Pagination state ----------
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Number of items per page
+
+  // Calculate pagination values
+  const totalItems = books.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = books.slice(startIndex, endIndex);
+
+  // Pagination handlers
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   // --------- load categories and authors for dropdowns ----------
   const [categories, setCategories] = useState([]);
@@ -369,6 +401,56 @@ export default function ManageBooks() {
     }
   };
 
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total pages is less than max visible
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate start and end of visible page range
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if we're near the beginning
+      if (currentPage <= 3) {
+        endPage = 4;
+      }
+      
+      // Adjust if we're near the end
+      if (currentPage >= totalPages - 2) {
+        startPage = totalPages - 3;
+      }
+      
+      // Add ellipsis if needed after first page
+      if (startPage > 2) {
+        pages.push('...');
+      }
+      
+      // Add middle pages
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(i);
+      }
+      
+      // Add ellipsis if needed before last page
+      if (endPage < totalPages - 1) {
+        pages.push('...');
+      }
+      
+      // Always show last page
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
   return (
     <div className="min-h-screen flex bg-gray-100">
       {/* Sidebar */}
@@ -397,68 +479,111 @@ export default function ManageBooks() {
             {loading ? (
               <div className="p-8 text-center text-gray-500">Loading books...</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-collapse">
-                  <thead className="bg-gray-50">
-                    <tr className="text-left">
-                      <th className="py-3 px-4">Book</th>
-                      <th className="py-3 px-4">Author</th>
-                      <th className="py-3 px-4">Category</th>
-                      <th className="py-3 px-4 whitespace-nowrap">No of copy</th>
-                      <th className="py-3 px-4">Available</th>
-                      <th className="py-3 px-4">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {books.map((book) => (
-                      <tr key={book.bookId} className="border-b last:border-0 even:bg-gray-50">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={book.cover || PLACEHOLDER_IMG}
-                              alt={book.title}
-                              className="h-10 w-10 rounded object-cover bg-gray-100 flex-shrink-0"
-                            />
-                            <p className="font-semibold text-gray-800 truncate">
-                              {book.title}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-gray-700">{book.author}</td>
-                        <td className="py-3 px-4 text-gray-700">{book.category}</td>
-                        <td className="py-3 px-4 text-gray-700">{book.copies ?? "—"}</td>
-                        <td className="py-3 px-4 text-gray-700">{book.availableCopies ?? "—"}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => onOpenEdit(book)}
-                              className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
-                            >
-                              <Pencil size={14} /> Edit
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => requestDelete(book.bookId, book.title)}
-                              className="inline-flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
-                            >
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        </td>
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead className="bg-gray-50">
+                      <tr className="text-left text-gray-600">
+                        <th className="py-3 px-4">Book</th>
+                        <th className="py-3 px-4">Author</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4 whitespace-nowrap">No of copy</th>
+                        <th className="py-3 px-4">Available</th>
+                        <th className="py-3 px-4">Action</th>
                       </tr>
-                    ))}
+                    </thead>
+                    <tbody>
+                      {currentItems.map((book) => (
+                        <tr key={book.bookId} className="border-b last:border-0 even:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={book.cover || PLACEHOLDER_IMG}
+                                alt={book.title}
+                                className="h-10 w-10 rounded object-cover bg-gray-100 flex-shrink-0"
+                              />
+                              <p className="font-semibold text-gray-800 truncate">
+                                {book.title}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-700">{book.author}</td>
+                          <td className="py-3 px-4 text-gray-700">{book.category}</td>
+                          <td className="py-3 px-4 text-gray-700">{book.copies ?? "—"}</td>
+                          <td className="py-3 px-4 text-gray-700">{book.availableCopies ?? "—"}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => onOpenEdit(book)}
+                                className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                              >
+                                <Pencil size={14} /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => requestDelete(book.bookId, book.title)}
+                                className="inline-flex items-center gap-1 rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-400 focus:outline-none focus:ring-2 focus:ring-red-300"
+                              >
+                                <Trash2 size={14} /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
 
-                    {books.length === 0 && !loading && (
-                      <tr>
-                        <td colSpan={6} className="py-6 px-4 text-center text-gray-500">
-                          No books found. Click "Add Book" to create one.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      {books.length === 0 && !loading && (
+                        <tr>
+                          <td colSpan={6} className="py-6 px-4 text-center text-gray-500">
+                            No books found. Click "Add Book" to create one.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 px-2">
+                    <div className="text-sm text-gray-700">
+                      Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} books
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={goToPrevPage}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      
+                      {getPageNumbers().map((page, index) => (
+                        <button
+                          key={index}
+                          onClick={() => typeof page === 'number' ? goToPage(page) : null}
+                          disabled={page === '...'}
+                          className={`min-w-[2.25rem] px-2 py-1.5 rounded-md border text-sm ${
+                            page === currentPage
+                              ? 'border-sky-600 bg-sky-600 text-white'
+                              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                          } ${page === '...' ? 'cursor-default' : ''}`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      
+                      <button
+                        onClick={goToNextPage}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -498,7 +623,7 @@ export default function ManageBooks() {
                       value={form.title}
                       onChange={handleChange}
                       placeholder="Book title"
-                      className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className=" text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                       required
                     />
                   </div>
@@ -510,7 +635,7 @@ export default function ManageBooks() {
                       name="authorId"
                       value={form.authorId}
                       onChange={handleChange}
-                      className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                       required
                     >
                       <option value="">Select an author</option>
@@ -529,7 +654,7 @@ export default function ManageBooks() {
                       name="categoryId"
                       value={form.categoryId}
                       onChange={handleChange}
-                      className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                       required
                     >
                       <option value="">Select a category</option>
@@ -550,7 +675,7 @@ export default function ManageBooks() {
                       value={form.totalCopies}
                       onChange={handleChange}
                       placeholder="Total copies"
-                      className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                     />
                   </div>
 
@@ -563,7 +688,7 @@ export default function ManageBooks() {
                       value={form.availableCopies}
                       onChange={handleChange}
                       placeholder="Available copies"
-                      className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                     />
                   </div>
 
@@ -729,7 +854,7 @@ export default function ManageBooks() {
                       onChange={handleChange}
                       rows={4}
                       placeholder="Book summary"
-                      className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      className="text-gray-900 w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                     />
                   </div>
                 </div>
@@ -835,4 +960,4 @@ export default function ManageBooks() {
       `}</style>
     </div>
   );
-} 
+}

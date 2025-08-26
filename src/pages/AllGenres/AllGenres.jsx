@@ -1,5 +1,4 @@
-// AllGenres.jsx
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useMemo, useState, useEffect } from "react";
 import api from "../../api";
 import Sidebar from "../../components/Sidebar/Sidebar";
@@ -9,14 +8,45 @@ import { Star } from "lucide-react";
 export default function AllGenres() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [books, setBooks] = useState([]);
   const [bookRatings, setBookRatings] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState(location.state?.filter || null);
+  const [filter, setFilter] = useState({ type: "all" });
   const PAGE_SIZE = 9;
   const [page, setPage] = useState(1);
+
+  // Parse category filters from URL query parameters
+  useEffect(() => {
+    const categoryParams = searchParams.getAll('category');
+    
+    if (categoryParams.length > 0) {
+      setFilter({
+        type: "categories",
+        categories: categoryParams
+      });
+    } else {
+      setFilter({ type: "all" });
+    }
+  }, [searchParams]);
+
+  // Also check for location.state for backward compatibility
+  useEffect(() => {
+    if (location.state?.filter) {
+      setFilter(location.state.filter);
+      
+      // If categories are passed via state, update URL too
+      if (location.state.filter.type === "categories" && location.state.filter.categories.length > 0) {
+        const params = new URLSearchParams();
+        location.state.filter.categories.forEach(category => {
+          params.append('category', category);
+        });
+        setSearchParams(params);
+      }
+    }
+  }, [location.state, setSearchParams]);
 
   // Fetch books from API
   useEffect(() => {
@@ -95,10 +125,6 @@ export default function AllGenres() {
     }));
   }, [books, bookRatings]);
 
-  useEffect(() => {
-    if (location.state?.filter !== undefined) setFilter(location.state.filter);
-  }, [location.state]);
-
   const filtered = useMemo(() => {
     if (!filter || filter.type === "all") return allBooks;
     
@@ -115,6 +141,30 @@ export default function AllGenres() {
     return allBooks;
   }, [filter, allBooks]);
 
+  // Update Sidebar selection based on URL params
+  const handleSidebarSelect = (newFilter) => {
+    setFilter(newFilter);
+    
+    // Update URL when categories are selected
+    if (newFilter.type === "categories" && newFilter.categories.length > 0) {
+      const params = new URLSearchParams();
+      newFilter.categories.forEach(category => {
+        params.append('category', category);
+      });
+      setSearchParams(params);
+    } else {
+      // Clear filters
+      setSearchParams({});
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilter({ type: "all" });
+    setSearchParams({});
+    setPage(1);
+  };
+
   // Keep page valid
   useEffect(() => setPage(1), [filter]);
   const totalPages = Math.max(1, Math.ceil((filtered?.length || 0) / PAGE_SIZE));
@@ -126,7 +176,7 @@ export default function AllGenres() {
   if (loading) {
     return (
       <div className="flex min-h-screen bg-white">
-        <Sidebar onSelect={setFilter} />
+        <Sidebar onSelect={handleSidebarSelect} />
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="text-gray-500">Loading books...</div>
         </div>
@@ -137,7 +187,7 @@ export default function AllGenres() {
   if (error) {
     return (
       <div className="flex min-h-screen bg-white">
-        <Sidebar onSelect={setFilter} />
+        <Sidebar onSelect={handleSidebarSelect} />
         <div className="flex-1 p-6 flex items-center justify-center">
           <div className="text-red-500">{error}</div>
         </div>
@@ -148,11 +198,33 @@ export default function AllGenres() {
   return (
     <div className="flex min-h-screen bg-white">
       {/* Sidebar */}
-      <Sidebar onSelect={setFilter} />
+      <Sidebar onSelect={handleSidebarSelect} />
 
       {/* Book Grid */}
       <div className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-6">All Genres</h1>
+        <h1 className="text-2xl font-bold mb-6 text-gray-900">All Genres</h1>
+
+        {/* Filter status */}
+        {/* {filter.type === "categories" && filter.categories.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-800 font-medium">
+                  Filtering by: {filter.categories.join(", ")}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {filtered.length} book{filtered.length !== 1 ? 's' : ''} found
+                </p>
+              </div>
+              <button
+                onClick={clearFilters}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+        )} */}
 
         <div className="rounded-lg border border-gray-300 overflow-hidden bg-white">
           <div className="px-4 py-3 bg-white">
@@ -172,7 +244,15 @@ export default function AllGenres() {
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-gray-500">No books found.</div>
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-500 mb-4">No books found matching your filters.</p>
+                <button
+                  onClick={clearFilters}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Clear all filters
+                </button>
+              </div>
             )}
           </div>
 

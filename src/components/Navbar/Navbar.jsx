@@ -19,7 +19,7 @@ export default function Navbar() {
   const [query, setQuery] = useState("");
   const [books, setBooks] = useState([]);
   const [openNoti, setOpenNoti] = useState(false);
-  const [openMsg, setOpenMsg] = useState(false);
+  const [setOpenMsg] = useState(false);
   const [openUser, setOpenUser] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
@@ -97,26 +97,6 @@ export default function Navbar() {
   }, [openNoti]);
 
   // Demo message data
-  const messages = [
-    {
-      id: "m1",
-      from: "Admin",
-      text: "Your membership has been upgraded.",
-      time: "5m",
-    },
-    {
-      id: "m2",
-      from: "Support",
-      text: "Let us know if the PDF link works.",
-      time: "1h",
-    },
-    {
-      id: "m3",
-      from: "Librarian",
-      text: "Return reminder for 2 books due tomorrow.",
-      time: "Yesterday",
-    },
-  ];
 
   // Live search results (by title, authors, category, summary)
   const results = useMemo(() => {
@@ -249,7 +229,7 @@ export default function Navbar() {
                     {user ? "Signed in as" : "Welcome"}
                   </div>
                   <div className="font-semibold text-gray-800">
-                    {userProfile?.username || user?.name || "Guest"}
+                    {userProfile?.username}
                   </div>
                 </div>
                 <ul className="py-1 text-sm">
@@ -264,7 +244,7 @@ export default function Navbar() {
                       Dashboard
                     </button>
                   </li>
-                  <li>
+                  {/* <li>
                     <button
                       className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700"
                       onClick={() => {
@@ -274,15 +254,15 @@ export default function Navbar() {
                     >
                       Donate a Book
                     </button>
-                  </li>
+                  </li> */}
                 </ul>
                 <div className="border-t">
-                  <button
+                  {/* <button
                     className="w-full px-4 py-2 text-left text-sky-600 font-semibold hover:bg-gray-50"
                     onClick={user ? handleSignOut : () => navigate("/login")}
                   >
                     {user ? "Sign Out" : "Sign In"}
-                  </button>
+                  </button> */}
                 </div>
               </div>
             )}

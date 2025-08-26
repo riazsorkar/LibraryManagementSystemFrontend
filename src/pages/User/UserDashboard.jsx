@@ -302,7 +302,7 @@ export default function UserProfile() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-gray-200">
+                      <tr className="border-b border-gray-200 text-gray-900 ">
                         <th className="text-left py-3 px-4">Book</th>
                         <th className="text-left py-3 px-4">Borrow Date</th>
                         <th className="text-left py-3 px-4">Due Date</th>
@@ -326,9 +326,9 @@ export default function UserProfile() {
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-4">{formatDate(borrow.borrowDate)}</td>
-                          <td className="py-4 px-4">{formatDate(borrow.dueDate)}</td>
-                          <td className="py-4 px-4">
+                          <td className="py-4 px-4 text-gray-900 ">{formatDate(borrow.borrowDate)}</td>
+                          <td className="py-4 px-4 text-gray-900">{formatDate(borrow.dueDate)}</td>
+                          <td className="py-4 px-4 text-gray-900">
                             <span className={getStatusBadge(borrow.status)}>
                               {getStatusIcon(borrow.status)}
                               <span className="ml-1">{borrow.status}</span>

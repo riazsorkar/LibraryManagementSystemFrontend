@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import Navbar from "../../components/Navbar/Navbar";
 import FeaturedBanner from "../../components/FeaturedBanner/FeaturedBanner";
@@ -9,7 +9,7 @@ import api from "../../api";
 import normalizeBookData from "../../components/NormalizeBookData/NormalizeBookData";
 
 export default function Home() {
-  const [filter, setFilter] = useState(null);
+  const [filter, setFilter] = useState({ type: "all" });
   const [openFilters, setOpenFilters] = useState(false);
   const navigate = useNavigate();
   const [recommended, setRecommended] = useState([]);
@@ -17,7 +17,36 @@ export default function Home() {
   const [newBookCollections, setNewBookCollections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [ratings, setRatings] = useState({}); // Store ratings by bookId
+  const [ratings, setRatings] = useState({});
+
+  // Handle filter selection - navigate to All Genres page when filtering
+  const handleFilterSelect = (newFilter) => {
+    setFilter(newFilter);
+    
+    // If categories are selected, navigate to All Genres page with query params
+    if (newFilter.type === "categories" && newFilter.categories.length > 0) {
+      const categoryParams = newFilter.categories.map(cat => 
+        `category=${encodeURIComponent(cat)}`
+      ).join('&');
+      
+      navigate(`/all-genres?${categoryParams}`);
+    }
+  };
+
+  // Filter books based on selected categories (for immediate feedback before navigation)
+  const filterBooks = (books) => {
+    if (filter.type === "all" || !filter.categories || filter.categories.length === 0) {
+      return books;
+    }
+    
+    return books.filter(book => 
+      filter.categories.includes(book.categoryName)
+    );
+  };
+
+  const filteredRecommended = useMemo(() => filterBooks(recommended), [recommended, filter]);
+  const filteredPopular = useMemo(() => filterBooks(popular), [popular, filter]);
+  const filteredNewBookCollections = useMemo(() => filterBooks(newBookCollections), [newBookCollections, filter]);
 
   const fetchBookData = async () => {
     try {
@@ -46,7 +75,7 @@ export default function Home() {
       const ratingPromises = allBookIds.map(bookId => 
         api.get(`/Ratings/book/${bookId}`).catch(error => {
           console.warn(`Failed to fetch ratings for book ${bookId}:`, error);
-          return { data: null }; // Return null if rating fetch fails
+          return { data: null };
         })
       );
 
@@ -104,7 +133,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-7xl w-full flex flex-col md:flex-row px-4 sm:px-6 lg:px-8 py-4 gap-4">
         {/* <aside className="hidden md:block w-full md:w-64 lg:w-72 flex-none md:sticky md:top-20">
-          <Sidebar onSelect={setFilter} />
+          <Sidebar onSelect={handleFilterSelect} />
         </aside> */}
 
         <main className="flex-1 min-w-0">
@@ -119,20 +148,40 @@ export default function Home() {
             </button>
           </div>
 
+          {/* Show filter status with link to All Genres */}
+          {filter.type === "categories" && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800 mb-2">
+                Filtering by: {filter.categories.join(", ")}
+              </p>
+              <button
+                onClick={() => {
+                  const categoryParams = filter.categories.map(cat => 
+                    `category=${encodeURIComponent(cat)}`
+                  ).join('&');
+                  navigate(`/all-genres?${categoryParams}`);
+                }}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                View all books in these categories →
+              </button>
+            </div>
+          )}
+
           <>
             <Slider
               title="Recommended"
-              items={recommended}
+              items={filteredRecommended}
             />
         
             <Slider
               title="Popular"
-              items={popular}
+              items={filteredPopular}
             />
         
             <Slider
               title="New Book Collections"
-              items={newBookCollections}
+              items={filteredNewBookCollections}
             />
           </>
         </main>

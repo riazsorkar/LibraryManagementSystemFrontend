@@ -38,7 +38,7 @@ export default function UserSidebar({ active = "dashboard" }) {
   return (
     <aside className="w-60 bg-white shadow-md px-4 py-6 flex flex-col justify-between">
       <div>
-        <h2 className="text-xl font-bold mb-6">My Library</h2>
+        <h2 className="text-xl font-bold mb-6 text-gray-900">My Library</h2>
         <ul className="space-y-3">
           <li>
             <Link to="/UserDashboard" className={isDashboard ? on : off}>
@@ -68,12 +68,12 @@ export default function UserSidebar({ active = "dashboard" }) {
         </ul>
       </div>
       <div>
-        <Link
+        {/* <Link
           to="/"
           className="flex items-center gap-2 text-red-600 font-medium hover:underline underline-offset-4"
         >
           <LogOut size={18} /> Logout
-        </Link>
+        </Link> */}
       </div>
     </aside>
   );

@@ -156,12 +156,12 @@ export default function Sidebar() {
       </div>
 
       <div>
-        <Link
+        {/* <Link
           to="/"
           className="flex items-center gap-2 text-red-600 font-medium hover:underline underline-offset-4"
         >
           <LogOut size={18} /> Logout
-        </Link>
+        </Link> */}
       </div>
     </aside>
   );

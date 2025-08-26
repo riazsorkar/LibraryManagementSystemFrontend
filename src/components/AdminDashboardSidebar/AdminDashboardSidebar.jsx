@@ -18,7 +18,7 @@ export default function AdminDashboardSidebar() {
   return (
     <aside className="w-64 bg-white shadow-md px-4 py-6 flex flex-col justify-between">
       <div>
-        <h2 className="text-xl font-bold mb-6">Library</h2>
+        <h2 className="text-xl font-bold mb-6 text-gray-900">Library</h2>
         <ul className="space-y-2">
           <li>
             <Link
@@ -92,12 +92,12 @@ export default function AdminDashboardSidebar() {
         </ul>
       </div>
       <div>
-        <Link
+        {/* <Link
           to="/logout"
           className="flex items-center gap-2 px-3 py-3 text-red-600 font-medium hover:underline underline-offset-4"
         >
           <LogOut size={18} /> Logout
-        </Link>
+        </Link> */}
       </div>
     </aside>
   );

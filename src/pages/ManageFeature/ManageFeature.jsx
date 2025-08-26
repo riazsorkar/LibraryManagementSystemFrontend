@@ -12,6 +12,8 @@ import {
   Search,
   Filter,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import AdminDashboardSidebar from "../../components/AdminDashboardSidebar/AdminDashboardSidebar";
 
@@ -99,6 +101,10 @@ export default function ManageFeature() {
     setTimeout(() => setToast({ show: false, msg: "" }), 1600);
   };
 
+  // pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12); // 12 items per page
+
   /* -------- load all books from backend -------- */
   const fetchAllBooks = async () => {
     try {
@@ -174,6 +180,12 @@ export default function ManageFeature() {
     return base;
   }, [catalog, search, view, featuredMapByBookId]);
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCatalog.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredCatalog.slice(indexOfFirstItem, indexOfLastItem);
+
   const checkedCount = featured.length;
 
   /* -------- actions: add to featured (POST) -------- */
@@ -234,6 +246,9 @@ export default function ManageFeature() {
     }
   };
 
+  // Handle page change
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   /* -------- UI -------- */
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -251,6 +266,7 @@ export default function ManageFeature() {
               type="button"
               onClick={() => {
                 setLoading(true);
+                setCurrentPage(1); // Reset to first page on refresh
                 Promise.all([fetchAllBooks(), fetchFeatured()]).finally(() => 
                   setLoading(false)
                 );
@@ -272,7 +288,10 @@ export default function ManageFeature() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1); // Reset to first page when searching
+                  }}
                   placeholder="Search by title, author, category, or ID…"
                   className="w-full rounded border border-gray-300 pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-sky-400"
                 />
@@ -283,21 +302,30 @@ export default function ManageFeature() {
               <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => setView("all")}
+                  onClick={() => {
+                    setView("all");
+                    setCurrentPage(1); // Reset to first page when changing view
+                  }}
                   className={`px-3 py-1.5 text-sm ${view === "all" ? "bg-gray-100 text-gray-800 font-medium" : "text-gray-700"}`}
                 >
                   All
                 </button>
                 <button
                   type="button"
-                  onClick={() => setView("checked")}
+                  onClick={() => {
+                    setView("checked");
+                    setCurrentPage(1); // Reset to first page when changing view
+                  }}
                   className={`px-3 py-1.5 text-sm ${view === "checked" ? "bg-gray-100 text-gray-800 font-medium" : "text-gray-700"}`}
                 >
                   Checked
                 </button>
                 <button
                   type="button"
-                  onClick={() => setView("unchecked")}
+                  onClick={() => {
+                    setView("unchecked");
+                    setCurrentPage(1); // Reset to first page when changing view
+                  }}
                   className={`px-3 py-1.5 text-sm ${view === "unchecked" ? "bg-gray-100 text-gray-800 font-medium" : "text-gray-700"}`}
                 >
                   Unchecked
@@ -334,14 +362,14 @@ export default function ManageFeature() {
                 </div>
               ))}
 
-            {!loading && filteredCatalog.length === 0 && (
+            {!loading && currentItems.length === 0 && (
               <div className="col-span-full text-sm text-gray-500">
                 No books match your search.
               </div>
             )}
 
             {!loading &&
-              filteredCatalog.map((b) => {
+              currentItems.map((b) => {
                 const checked = featuredMapByBookId.has(b.id);
                 const pending = !!pendingById[b.id];
 
@@ -377,7 +405,7 @@ export default function ManageFeature() {
                           ${checked ? "bg-green-50 text-green-700 ring-green-200" : "bg-gray-50 text-gray-600 ring-gray-200"}
                         `}
                       >
-                        {checked ? "Checked" : "Unchecked"}
+                        {checked ? "Featured" : "Not Featured"}
                       </span>
 
                       <Switch
@@ -389,41 +417,50 @@ export default function ManageFeature() {
                         }}
                       />
                     </div>
-
-                    {/* Primary action button */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (checked) askUncheck(b);
-                        else handleCheck(b);
-                      }}
-                      className={`mt-3 w-full inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold shadow
-                        ${
-                          checked
-                            ? "bg-red-600 text-white hover:bg-red-500 focus:ring-2 focus:ring-red-400"
-                            : "bg-sky-600 text-white hover:bg-sky-500 focus:ring-2 focus:ring-sky-400"
-                        }
-                      `}
-                      disabled={pending}
-                    >
-                      {pending ? (
-                        <Loader2 className="animate-spin" size={16} />
-                      ) : checked ? (
-                        <>
-                          Uncheck
-                        </>
-                      ) : (
-                        <>
-                          <Check size={16} />
-                          Check
-                        </>
-                      )}
-                    </button>
                   </article>
                 );
               })}
           </div>
+
+          {/* Pagination Controls */}
+          {!loading && filteredCatalog.length > 0 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredCatalog.length)} of {filteredCatalog.length} results
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => paginate(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => paginate(page)}
+                    className={`w-8 h-8 rounded-md text-sm ${
+                      currentPage === page 
+                        ? "bg-sky-600 text-white" 
+                        : "border border-gray-300 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => paginate(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-md border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </main>
 
