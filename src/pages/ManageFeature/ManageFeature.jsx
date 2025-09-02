@@ -109,7 +109,7 @@ export default function ManageFeature() {
   const fetchAllBooks = async () => {
     try {
       const response = await api.get("/Books");
-      const data = Array.isArray(response.data) ? response.data : [];
+      const data = Array.isArray(response.data.items) ? response.data.items : [];
       setCatalog(data.map(normalizeCatalog));
     } catch (error) {
       console.error("Error fetching books:", error);

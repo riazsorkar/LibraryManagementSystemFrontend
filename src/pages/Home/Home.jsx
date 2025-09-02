@@ -49,71 +49,72 @@ export default function Home() {
   const filteredNewBookCollections = useMemo(() => filterBooks(newBookCollections), [newBookCollections, filter]);
 
   const fetchBookData = async () => {
-    try {
-      setLoading(true);
-      setErrorMsg(null);
+  try {
+    setLoading(true);
+    setErrorMsg(null);
 
-      const [recommendedResponse, popularResponse, newBookCollectionsResponse] =
-        await Promise.all([
-          api.get("/recommendations/for-user?count=5"),
-          api.get("/recommendations/popular?count=5"),
-          api.get("/Books"),
-        ]);
+    const [recommendedResponse, popularResponse, newBookCollectionsResponse] =
+      await Promise.all([
+        api.get("/recommendations/for-user?count=5"),
+        api.get("/recommendations/popular?count=5"),
+        api.get("/Books?pageNumber=1&pageSize=10"),
+      ]);
 
-      const recommendedBooks = recommendedResponse.data.map(normalizeBookData);
-      const popularBooks = popularResponse.data.map(normalizeBookData);
-      const newBooks = newBookCollectionsResponse.data.map(normalizeBookData);
+    // Extract items from the paginated response
+    const recommendedBooks = recommendedResponse.data.map(normalizeBookData);
+    const popularBooks = popularResponse.data.map(normalizeBookData);
+    const newBooks = newBookCollectionsResponse.data.items.map(normalizeBookData); // Changed this line
 
-      // Get all unique book IDs to fetch ratings
-      const allBookIds = [
-        ...recommendedBooks.map(b => b.id),
-        ...popularBooks.map(b => b.id),
-        ...newBooks.map(b => b.id)
-      ].filter((id, index, array) => array.indexOf(id) === index);
+    // Get all unique book IDs to fetch ratings
+    const allBookIds = [
+      ...recommendedBooks.map(b => b.id),
+      ...popularBooks.map(b => b.id),
+      ...newBooks.map(b => b.id)
+    ].filter((id, index, array) => array.indexOf(id) === index);
 
-      // Fetch ratings for all books
-      const ratingPromises = allBookIds.map(bookId => 
-        api.get(`/Ratings/book/${bookId}`).catch(error => {
-          console.warn(`Failed to fetch ratings for book ${bookId}:`, error);
-          return { data: null };
-        })
-      );
+    // Fetch ratings for all books
+    const ratingPromises = allBookIds.map(bookId => 
+      api.get(`/Ratings/book/${bookId}`).catch(error => {
+        console.warn(`Failed to fetch ratings for book ${bookId}:`, error);
+        return { data: null };
+      })
+    );
 
-      const ratingResponses = await Promise.all(ratingPromises);
-      
-      // Create ratings lookup object
-      const ratingsData = {};
-      ratingResponses.forEach((response, index) => {
-        if (response.data) {
-          ratingsData[allBookIds[index]] = {
-            averageRating: response.data.averageRating || 0,
-            totalRatings: response.data.totalRatings || 0
-          };
-        }
-      });
+    const ratingResponses = await Promise.all(ratingPromises);
+    
+    // Create ratings lookup object
+    const ratingsData = {};
+    ratingResponses.forEach((response, index) => {
+      if (response.data) {
+        ratingsData[allBookIds[index]] = {
+          averageRating: response.data.averageRating || 0,
+          totalRatings: response.data.totalRatings || 0
+        };
+      }
+    });
 
-      setRatings(ratingsData);
+    setRatings(ratingsData);
 
-      // Update books with rating data
-      const updateBooksWithRatings = (books) => {
-        return books.map(book => ({
-          ...book,
-          rating: ratingsData[book.id]?.averageRating || 0,
-          ratingCount: ratingsData[book.id]?.totalRatings || 0
-        }));
-      };
+    // Update books with rating data
+    const updateBooksWithRatings = (books) => {
+      return books.map(book => ({
+        ...book,
+        rating: ratingsData[book.id]?.averageRating || 0,
+        ratingCount: ratingsData[book.id]?.totalRatings || 0
+      }));
+    };
 
-      setRecommended(updateBooksWithRatings(recommendedBooks));
-      setPopular(updateBooksWithRatings(popularBooks));
-      setNewBookCollections(updateBooksWithRatings(newBooks));
+    setRecommended(updateBooksWithRatings(recommendedBooks));
+    setPopular(updateBooksWithRatings(popularBooks));
+    setNewBookCollections(updateBooksWithRatings(newBooks));
 
-    } catch (error) {
-      console.error("Error fetching book data:", error);
-      setErrorMsg("Failed to load book data. Please try again later.\n" + error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error("Error fetching book data:", error);
+    setErrorMsg("Failed to load book data. Please try again later.\n" + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchBookData();
@@ -132,9 +133,9 @@ export default function Home() {
       <Navbar />
 
       <div className="mx-auto max-w-7xl w-full flex flex-col md:flex-row px-4 sm:px-6 lg:px-8 py-4 gap-4">
-        {/* <aside className="hidden md:block w-full md:w-64 lg:w-72 flex-none md:sticky md:top-20">
+        <aside className="hidden md:block w-full md:w-64 lg:w-72 flex-none md:sticky md:top-20">
           <Sidebar onSelect={handleFilterSelect} />
-        </aside> */}
+        </aside>
 
         <main className="flex-1 min-w-0">
           <div className="md:hidden mb-3">

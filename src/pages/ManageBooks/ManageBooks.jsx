@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import api from "../../api";
 import AdminDashboardSidebar from "../../components/AdminDashboardSidebar/AdminDashboardSidebar";
-
 const PLACEHOLDER_IMG = "../../../uploads/images/dummy_cover.png";
 
 // ---------- helpers ----------
@@ -62,7 +61,7 @@ export default function ManageBooks() {
     try {
       setLoading(true);
       const response = await api.get("/Books");
-      const normalizedBooks = response.data.map(normalizeBookData);
+      const normalizedBooks = response.data.items.map(normalizeBookData);
       setBooks(normalizedBooks);
     } catch (error) {
       console.error("Error fetching books:", error);

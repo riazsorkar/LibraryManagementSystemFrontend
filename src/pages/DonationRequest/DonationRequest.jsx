@@ -1,18 +1,23 @@
 // src/pages/DonationRequest/DonationRequest.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   HandHeart,
-  Clock,
   Plus,
   BookOpen,
   User,
   Phone,
   MapPin,
   Edit3,
-  Calendar
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react";
 import UserSidebar from "../../components/UserSidebar/UserSidebar";
 import api from "../../api";
+
+// Constants
+const ITEMS_PER_PAGE = 5;
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -20,100 +25,46 @@ function fmtDate(iso) {
   return d.toLocaleDateString();
 }
 
-export default function DonationRequest() {
-  useEffect(() => {
-    document.title = "Donation Request";
-  }, []);
-
-  // ---------- Data ----------
-  const [donationRequests, setDonationRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-
-  // Form state for creating donation request
-  const [formData, setFormData] = useState({
-    bookTitle: "",
-    authorName: "",
-    reason: "",
-    brainStationId: "",
-    phoneNumber: "",
-    address: ""
-  });
-
-  // Load donation requests from API
-  const loadDonationRequests = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Fetch all donation requests for the user
-      const response = await api.get("/Donations/user");
-      
-      if (response.data && Array.isArray(response.data)) {
-        setDonationRequests(response.data);
-      } else {
-        setDonationRequests([]);
-      }
-    } catch (err) {
-      console.error("Error loading donation requests:", err);
-      setError("Failed to load donation requests");
-    } finally {
-      setLoading(false);
-    }
+// Status badge component
+const StatusBadge = ({ status }) => {
+  const statusStyles = {
+    Approved: "bg-green-100 text-green-800",
+    Rejected: "bg-red-100 text-red-800",
+    Pending: "bg-yellow-100 text-yellow-800",
+    default: "bg-gray-100 text-gray-800"
   };
+  
+  const style = statusStyles[status] || statusStyles.default;
+  
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${style}`}>
+      {status}
+    </span>
+  );
+};
 
-  // Load data on component mount
-  useEffect(() => {
-    loadDonationRequests();
-  }, []);
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const response = await api.post("/Donations", formData);
-      
-      if (response.status === 200 || response.status === 201) {
-        // Reload the donation requests to include the new one
-        await loadDonationRequests();
-        setShowCreateForm(false);
-        setFormData({
-          bookTitle: "",
-          authorName: "",
-          reason: "",
-          brainStationId: "",
-          phoneNumber: "",
-          address: ""
-        });
-        
-        // Show success message
-        setError(null);
-      }
-    } catch (err) {
-      console.error("Error creating donation request:", err);
-      setError("Failed to submit donation request");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Create Donation Request Form
-  const CreateDonationForm = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200">
+// Create Donation Request Form Component
+const CreateDonationForm = ({ 
+  showCreateForm, 
+  setShowCreateForm, 
+  formData, 
+  handleInputChange, 
+  handleSubmit, 
+  loading 
+}) => {
+  if (!showCreateForm) return null;
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-800">Create Donation Request</h3>
+          <button
+            onClick={() => setShowCreateForm(false)}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X size={20} />
+          </button>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
@@ -212,14 +163,14 @@ export default function DonationRequest() {
             <button
               type="button"
               onClick={() => setShowCreateForm(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-sky-600 rounded-md hover:bg-sky-700 disabled:opacity-50 transition-colors"
             >
               {loading ? "Submitting..." : "Submit Request"}
             </button>
@@ -228,48 +179,184 @@ export default function DonationRequest() {
       </div>
     </div>
   );
+};
 
-  // Status badge component
-  const StatusBadge = ({ status }) => {
-    let bgColor = "bg-gray-100";
-    let textColor = "text-gray-800";
-    
-    if (status === "Approved") {
-      bgColor = "bg-green-100";
-      textColor = "text-green-800";
-    } else if (status === "Rejected") {
-      bgColor = "bg-red-100";
-      textColor = "text-red-800";
-    } else if (status === "Pending") {
-      bgColor = "bg-yellow-100";
-      textColor = "text-yellow-800";
-    }
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
-        {status}
-      </span>
+// Pagination Component
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+  const pages = [];
+  const maxVisiblePages = 5;
+  
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(
+      <button
+        key={i}
+        onClick={() => onPageChange(i)}
+        className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+          currentPage === i
+            ? "bg-sky-600 text-white"
+            : "bg-white text-gray-700 hover:bg-gray-100"
+        }`}
+      >
+        {i}
+      </button>
     );
+  }
+  
+  return (
+    <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4">
+      <div className="text-sm text-gray-700">
+        Page {currentPage} of {totalPages}
+      </div>
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="p-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        
+        {pages}
+        
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="p-1 rounded-md bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default function DonationRequest() {
+  useEffect(() => {
+    document.title = "Donation Request";
+  }, []);
+
+  // ---------- Data ----------
+  const [donationRequests, setDonationRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Form state for creating donation request
+  const [formData, setFormData] = useState({
+    bookTitle: "",
+    authorName: "",
+    reason: "",
+    brainStationId: "",
+    phoneNumber: "",
+    address: ""
+  });
+
+  // Load donation requests from API
+  const loadDonationRequests = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch all donation requests for the user
+      const response = await api.get("/Donations/user");
+      
+      if (response.data && Array.isArray(response.data)) {
+        setDonationRequests(response.data);
+      } else {
+        setDonationRequests([]);
+      }
+    } catch (err) {
+      console.error("Error loading donation requests:", err);
+      setError("Failed to load donation requests");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load data on component mount
+  useEffect(() => {
+    loadDonationRequests();
+  }, [loadDonationRequests]);
+
+  // Handle form input changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const response = await api.post("/Donations", formData);
+      
+      if (response.status === 200 || response.status === 201) {
+        // Reload the donation requests to include the new one
+        await loadDonationRequests();
+        setShowCreateForm(false);
+        setFormData({
+          bookTitle: "",
+          authorName: "",
+          reason: "",
+          brainStationId: "",
+          phoneNumber: "",
+          address: ""
+        });
+        
+        // Show success message
+        setError(null);
+      }
+    } catch (err) {
+      console.error("Error creating donation request:", err);
+      setError("Failed to submit donation request");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Pagination logic
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return donationRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [donationRequests, currentPage]);
+
+  const totalPages = Math.ceil(donationRequests.length / ITEMS_PER_PAGE);
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-100 overflow-hidden">
+    <div className="min-h-screen flex bg-gray-50">
       <UserSidebar />
 
-      <main className="flex-1 p-6 space-y-6 overflow-y-auto no-scrollbar">
-        <div className="flex items-start justify-between flex-wrap gap-3">
+      <main className="flex-1 p-6 space-y-6 overflow-y-auto">
+        <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <HandHeart className="text-sky-600" /> Donation Request
+            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <HandHeart className="text-sky-600" /> Donation Requests
             </h1>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mt-1">
               Manage your book donation requests and track their status.
             </p>
           </div>
 
           <button
             onClick={() => setShowCreateForm(true)}
-            className="inline-flex items-center gap-2 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-500"
+            className="inline-flex items-center gap-2 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500 transition-colors shadow-sm"
           >
             <Plus size={16} /> New Request
           </button>
@@ -281,18 +368,15 @@ export default function DonationRequest() {
           </div>
         )}
 
-        
-
         {loading ? (
-          
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-600"></div>
           </div>
         ) : (
-          <section className="bg-white rounded-lg shadow border border-gray-300 overflow-hidden">
+          <section className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-800">Donation Requests</h3>
-              <span className="text-sm text-gray-500">{donationRequests.length} requests</span>
+              <h3 className="text-lg font-semibold text-gray-800">Your Donation Requests</h3>
+              <span className="text-sm text-gray-500">{donationRequests.length} total requests</span>
             </div>
             
             <div className="overflow-x-auto">
@@ -307,22 +391,28 @@ export default function DonationRequest() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {donationRequests.length === 0 ? (
+                  {paginatedRequests.length === 0 ? (
                     <tr>
-                      <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
-                        No donation requests found.
+                      <td colSpan="5" className="px-6 py-8 text-center">
+                        <div className="text-gray-400 mb-2">No donation requests found</div>
+                        <button
+                          onClick={() => setShowCreateForm(true)}
+                          className="text-sky-600 hover:text-sky-700 text-sm font-medium"
+                        >
+                          Create your first request
+                        </button>
                       </td>
                     </tr>
                   ) : (
-                    donationRequests.map((request) => (
-                      <tr key={request.donationRequestId}>
+                    paginatedRequests.map((request) => (
+                      <tr key={request.donationRequestId} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           #{request.donationRequestId}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
                           <div className="font-medium">{request.bookTitle}</div>
                           {request.authorName && (
-                            <div className="text-xs text-gray-500">by {request.authorName}</div>
+                            <div className="text-xs text-gray-500 mt-1">by {request.authorName}</div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -350,18 +440,27 @@ export default function DonationRequest() {
                 </tbody>
               </table>
             </div>
+
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
           </section>
         )}
       </main>
 
       {/* Create Donation Form Modal */}
-      {showCreateForm && <CreateDonationForm />}
-
-      {/* Styles: no-scrollbar */}
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+      <CreateDonationForm
+        showCreateForm={showCreateForm}
+        setShowCreateForm={setShowCreateForm}
+        formData={formData}
+        handleInputChange={handleInputChange}
+        handleSubmit={handleSubmit}
+        loading={loading}
+      />
     </div>
   );
 }

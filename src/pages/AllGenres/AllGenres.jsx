@@ -53,8 +53,8 @@ export default function AllGenres() {
     const fetchBooks = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/Books');
-        setBooks(response.data || []);
+        const response = await api.get('/Books?pageNumber=1&pageSize=10');
+        setBooks(response.items.data || []);
       } catch (err) {
         setError('Failed to fetch books');
         console.error('Error fetching books:', err);

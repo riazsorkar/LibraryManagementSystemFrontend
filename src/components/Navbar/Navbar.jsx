@@ -9,6 +9,7 @@ import {
 import { CgMenuGridR } from "react-icons/cg";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import AppLauncherMenu from "./AppLauncherMenu"; // ← NEW
 import api from "../../api";
 
 export default function Navbar() {
@@ -25,6 +26,10 @@ export default function Navbar() {
   const [userProfile, setUserProfile] = useState(null);
   const searchRef = useRef(null);
 
+
+   const [openGrid, setOpenGrid] = useState(false);
+
+   const gridRef = useRef(null); // anchor for the grid icon/menu
   // Auth state
   const [user, setUser] = useState(() => {
     try {
@@ -83,6 +88,7 @@ export default function Navbar() {
         setOpenNoti(false);
         setOpenMsg(false);
         setOpenUser(false);
+        
       }
     };
     document.addEventListener("click", onDocClick);
@@ -148,7 +154,14 @@ export default function Navbar() {
               className="h-[80] w-auto max-h-[120px] object-contain cursor-pointer px-15"
             />
           </Link>
-          <CgMenuGridR className="w-6 h-6 text-gray-500 cursor-pointer" />
+          <AppLauncherMenu
+            gridRef={gridRef}
+            openGrid={openGrid}
+            setOpenGrid={setOpenGrid}
+            setOpenNoti={setOpenNoti}
+            setOpenMsg={setOpenMsg}
+            setOpenUser={setOpenUser}
+          />
         </div>
 
         {/* Right: Upload button + icons */}
