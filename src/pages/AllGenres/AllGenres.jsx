@@ -3,7 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import api from "../../api";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import BookCard from "../../components/BookCard/BookCard";
-import { Star } from "lucide-react";
+import normalizeBookData from "../../components/NormalizeBookData/NormalizeBookData";
 
 export default function AllGenres() {
   const navigate = useNavigate();
@@ -17,6 +17,10 @@ export default function AllGenres() {
   const [filter, setFilter] = useState({ type: "all" });
   const PAGE_SIZE = 9;
   const [page, setPage] = useState(1);
+
+  // Check for search results from navigation state
+  const searchResults = location.state?.searchResults;
+  const searchQuery = location.state?.searchQuery;
 
   // Parse category filters from URL query parameters
   useEffect(() => {
@@ -32,29 +36,15 @@ export default function AllGenres() {
     }
   }, [searchParams]);
 
-  // Also check for location.state for backward compatibility
-  useEffect(() => {
-    if (location.state?.filter) {
-      setFilter(location.state.filter);
-      
-      // If categories are passed via state, update URL too
-      if (location.state.filter.type === "categories" && location.state.filter.categories.length > 0) {
-        const params = new URLSearchParams();
-        location.state.filter.categories.forEach(category => {
-          params.append('category', category);
-        });
-        setSearchParams(params);
-      }
-    }
-  }, [location.state, setSearchParams]);
-
   // Fetch books from API
   useEffect(() => {
     const fetchBooks = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/Books?pageNumber=1&pageSize=10');
-        setBooks(response.items.data || []);
+        const response = await api.get('/Books');
+        
+        const booksData = response.data?.items || response.items || [];
+        setBooks(booksData);
       } catch (err) {
         setError('Failed to fetch books');
         console.error('Error fetching books:', err);
@@ -80,7 +70,6 @@ export default function AllGenres() {
               rating: response.data
             };
           } catch (error) {
-            console.error(`Error fetching rating for book ${book.bookId}:`, error);
             return {
               bookId: book.bookId,
               rating: {
@@ -107,23 +96,25 @@ export default function AllGenres() {
     fetchRatings();
   }, [books]);
 
+  // Normalize book data
   const allBooks = useMemo(() => {
-    return books.map(book => ({
-      id: book.bookId,
-      title: book.title,
-      summary: book.summary,
-      coverImage: book.coverImagePath,
-      hardCopyAvailable: book.hardCopyAvailable,
-      softCopyAvailable: book.softCopyAvailable,
-      audioFileAvailable: book.audioFileAvailable,
-      totalCopies: book.totalCopies,
-      availableCopies: book.availableCopies,
-      author: book.authorName,
-      category: book.categoryName,
-      rating: bookRatings[book.bookId]?.averageRating || 0,
-      totalRatings: bookRatings[book.bookId]?.totalRatings || 0
-    }));
-  }, [books, bookRatings]);
+    const booksToNormalize = searchResults && searchResults.length > 0 ? searchResults : books;
+    
+    return booksToNormalize.map(book => {
+      const normalizedBook = normalizeBookData({
+        ...book,
+        averageRating: bookRatings[book.bookId]?.averageRating || 0,
+        totalRatings: bookRatings[book.bookId]?.totalRatings || 0
+      });
+      
+      return {
+        ...normalizedBook,
+        id: book.bookId,
+        author: book.authorName,
+        category: book.categoryName
+      };
+    });
+  }, [books, bookRatings, searchResults]);
 
   const filtered = useMemo(() => {
     if (!filter || filter.type === "all") return allBooks;
@@ -141,11 +132,10 @@ export default function AllGenres() {
     return allBooks;
   }, [filter, allBooks]);
 
-  // Update Sidebar selection based on URL params
+  // Handle sidebar selection
   const handleSidebarSelect = (newFilter) => {
     setFilter(newFilter);
     
-    // Update URL when categories are selected
     if (newFilter.type === "categories" && newFilter.categories.length > 0) {
       const params = new URLSearchParams();
       newFilter.categories.forEach(category => {
@@ -153,25 +143,38 @@ export default function AllGenres() {
       });
       setSearchParams(params);
     } else {
-      // Clear filters
       setSearchParams({});
+    }
+    
+    // Clear search results when changing filters
+    if (location.state?.searchResults) {
+      navigate(location.pathname, { replace: true });
     }
   };
 
-  // Clear all filters
   const clearFilters = () => {
     setFilter({ type: "all" });
     setSearchParams({});
     setPage(1);
+    
+    // Clear search results
+    if (location.state?.searchResults) {
+      navigate(location.pathname, { replace: true });
+    }
   };
 
-  // Keep page valid
-  useEffect(() => setPage(1), [filter]);
-  const totalPages = Math.max(1, Math.ceil((filtered?.length || 0) / PAGE_SIZE));
-  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+  const clearSearch = () => {
+    navigate(location.pathname, { replace: true });
+  };
 
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const start = (page - 1) * PAGE_SIZE;
   const pageItems = filtered.slice(start, start + PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   if (loading) {
     return (
@@ -184,28 +187,37 @@ export default function AllGenres() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex min-h-screen bg-white">
-        <Sidebar onSelect={handleSidebarSelect} />
-        <div className="flex-1 p-6 flex items-center justify-center">
-          <div className="text-red-500">{error}</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen bg-white">
-      {/* Sidebar */}
       <Sidebar onSelect={handleSidebarSelect} />
 
-      {/* Book Grid */}
       <div className="flex-1 p-6">
         <h1 className="text-2xl font-bold mb-6 text-gray-900">All Genres</h1>
 
-        {/* Filter status */}
-        {/* {filter.type === "categories" && filter.categories.length > 0 && (
+        {/* Search results header */}
+        {searchResults && searchResults.length > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-800 font-medium">
+                  Search results for: "{searchQuery}"
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {searchResults.length} book{searchResults.length !== 1 ? 's' : ''} found
+                </p>
+              </div>
+              <button
+                onClick={clearSearch}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Clear search
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Category filter status */}
+        {filter.type === "categories" && filter.categories.length > 0 && (
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center justify-between">
               <div>
@@ -224,7 +236,7 @@ export default function AllGenres() {
               </button>
             </div>
           </div>
-        )} */}
+        )}
 
         <div className="rounded-lg border border-gray-300 overflow-hidden bg-white">
           <div className="px-4 py-3 bg-white">

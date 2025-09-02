@@ -9,7 +9,7 @@ import {
 import { CgMenuGridR } from "react-icons/cg";
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import AppLauncherMenu from "./AppLauncherMenu"; // ← NEW
+import AppLauncherMenu from "./AppLauncherMenu";
 import api from "../../api";
 
 export default function Navbar() {
@@ -25,11 +25,9 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
   const searchRef = useRef(null);
+  const [openGrid, setOpenGrid] = useState(false);
+  const gridRef = useRef(null);
 
-
-   const [openGrid, setOpenGrid] = useState(false);
-
-   const gridRef = useRef(null); // anchor for the grid icon/menu
   // Auth state
   const [user, setUser] = useState(() => {
     try {
@@ -38,6 +36,13 @@ export default function Navbar() {
       return null;
     }
   });
+
+  // Check if user is admin
+  const isAdmin = useMemo(() => {
+    const token = localStorage.getItem("authToken");
+    // This is a simple check - you might want to implement proper role checking from backend
+    return token && token.includes("admin");
+  }, []);
 
   // Fetch user profile
   useEffect(() => {
@@ -88,7 +93,6 @@ export default function Navbar() {
         setOpenNoti(false);
         setOpenMsg(false);
         setOpenUser(false);
-        
       }
     };
     document.addEventListener("click", onDocClick);
@@ -102,43 +106,51 @@ export default function Navbar() {
     }
   }, [openNoti]);
 
-  // Demo message data
-
-  // Live search results (by title, authors, category, summary)
+  // Live search results
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    const hit = (v) =>
-      typeof v === "string" && v.toLowerCase().includes(q);
+    
+    const hit = (v) => typeof v === "string" && v.toLowerCase().includes(q);
+    
     return books
-      .filter(
-        (b) =>
-          hit(b.title) ||
-          hit(b.authors || b.author || "") ||
-          hit(b.category || "") ||
-          hit(b.summary || b.description || "")
+      .filter((b) =>
+        hit(b.title) ||
+        hit(b.authorName || "") ||
+        hit(b.categoryName || "") ||
+        hit(b.summary || "")
       )
       .slice(0, 8);
   }, [books, query]);
 
-  const goToBook = (id) => {
-    setQuery("");
-    setShowSearch(false);
-    navigate(`/book/${id}`);
-  };
-
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (results[0]) goToBook(results[0].id);
+    if (query.trim()) {
+      // Navigate to AllGenres page with search query
+      navigate('/all-genres', { 
+        state: { 
+          searchQuery: query.trim(),
+          searchResults: results 
+        } 
+      });
+      setQuery("");
+      setShowSearch(false);
+    }
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
-    setUser(null);
-    setUserProfile(null);
-    setOpenUser(false);
-    navigate("/");
+  const handleSignOut = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
+      setUser(null);
+      setUserProfile(null);
+      setOpenUser(false);
+      navigate("/");
+    }
   };
 
   return (
@@ -180,7 +192,6 @@ export default function Navbar() {
               className="relative"
             >
               <Bell className="w-5 h-5 text-gray-700 cursor-pointer" />
-              {/* unread dot - show only if there are unread notifications */}
               {notifications.length > 0 && (
                 <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
               )}
@@ -239,10 +250,10 @@ export default function Navbar() {
               <div className="absolute right-0 top-10 w-56 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
                 <div className="px-4 py-3 border-b">
                   <div className="text-sm text-gray-600">
-                    {user ? "Signed in as" : "Welcome"}
+                    {isAdmin ? "Welcome Admin" : "Signed in as"}
                   </div>
                   <div className="font-semibold text-gray-800">
-                    {userProfile?.username}
+                    {userProfile?.username || user?.username}
                   </div>
                 </div>
                 <ul className="py-1 text-sm">
@@ -257,25 +268,14 @@ export default function Navbar() {
                       Dashboard
                     </button>
                   </li>
-                  {/* <li>
-                    <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-gray-700"
-                      onClick={() => {
-                        setOpenUser(false);
-                        navigate("/donation-request");
-                      }}
-                    >
-                      Donate a Book
-                    </button>
-                  </li> */}
                 </ul>
                 <div className="border-t">
-                  {/* <button
+                  <button
                     className="w-full px-4 py-2 text-left text-sky-600 font-semibold hover:bg-gray-50"
-                    onClick={user ? handleSignOut : () => navigate("/login")}
+                    onClick={handleSignOut}
                   >
-                    {user ? "Sign Out" : "Sign In"}
-                  </button> */}
+                    Sign Out
+                  </button>
                 </div>
               </div>
             )}
@@ -325,27 +325,39 @@ export default function Navbar() {
               <div className="absolute left-0 right-0 top-12 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
                 {results.length === 0 ? (
                   <div className="px-4 py-6 text-sm text-gray-500">
-                    No matches for “{query}”
+                    No matches for "{query}"
                   </div>
                 ) : (
                   <ul className="max-h-80 overflow-auto divide-y">
                     {results.map((b) => (
                       <li
-                        key={b.id}
+                        key={b.bookId}
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => goToBook(b.id)}
+                        onClick={() => {
+                          navigate('/all-genres', { 
+                            state: { 
+                              searchQuery: query,
+                              searchResults: results 
+                            } 
+                          });
+                          setQuery("");
+                          setShowSearch(false);
+                        }}
                       >
                         <img
-                          src={b.coverImage || b.image}
+                          src={b.coverImagePath}
                           alt={b.title}
                           className="w-10 h-14 object-cover rounded"
+                          onError={(e) => {
+                            e.target.src = "/placeholder-book.jpg";
+                          }}
                         />
                         <div className="min-w-0">
                           <div className="text-sm font-semibold text-gray-800 truncate">
                             {b.title}
                           </div>
                           <div className="text-xs text-gray-500 truncate">
-                            {(b.authors || b.author) ?? "Unknown"} • {b.category ?? "General"}
+                            {b.authorName} • {b.categoryName}
                           </div>
                         </div>
                       </li>

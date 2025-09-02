@@ -1,6 +1,4 @@
-// Sidebar.jsx
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
 import api from "../../api";
 
 const CAT_MAX_H = "max-h-96";
@@ -21,8 +19,12 @@ export default function Sidebar({ onSelect }) {
           api.get('/Categories')
         ]);
         
-        setAllBooks(Array.isArray(booksResponse.data) ? booksResponse.data : []);
-        setCategories(Array.isArray(categoriesResponse.data) ? categoriesResponse.data : []);
+        // Handle API response structure correctly
+        const booksData = booksResponse.data?.items || booksResponse.items || [];
+        const categoriesData = categoriesResponse.data || categoriesResponse;
+        
+        setAllBooks(Array.isArray(booksData) ? booksData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (error) {
         console.error('Error fetching data:', error);
         setAllBooks([]);
@@ -50,7 +52,6 @@ export default function Sidebar({ onSelect }) {
         ? prev.filter(cat => cat !== categoryName)
         : [...prev, categoryName];
       
-      // Update filter immediately when categories change
       if (onSelect) {
         if (newSelection.length === 0) {
           onSelect({ type: "all" });
@@ -130,7 +131,6 @@ export default function Sidebar({ onSelect }) {
         </div>
       </div>
 
-      {/* Selected categories summary */}
       {selectedCategories.length > 0 && (
         <div className="p-3 bg-sky-50 rounded-lg">
           <h4 className="text-sm font-medium text-sky-800 mb-2">Selected Categories:</h4>
